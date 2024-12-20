@@ -89,23 +89,23 @@ import (
     "time"
 )
 
-// IPDetails stores the response from ip-api.com
-type IPDetails struct {
-    Status      string  `json:"status"`
-    Country     string  `json:"country"`
-    CountryCode string  `json:"countryCode"`
-    Region      string  `json:"region"`
-    RegionName  string  `json:"regionName"`
-    City        string  `json:"city"`
-    Zip         string  `json:"zip"`
-    Lat         float64 `json:"lat"`
-    Lon         float64 `json:"lon"`
-    Timezone    string  `json:"timezone"`
-    ISP         string  `json:"isp"`
-    Org         string  `json:"org"`
-    AS          string  `json:"as"`
-    Query       string  `json:"query"`
-}
+// // IPDetails stores the response from ip-api.com
+// type IPDetails struct {
+//     Status      string  `json:"status"`
+//     Country     string  `json:"country"`
+//     CountryCode string  `json:"countryCode"`
+//     Region      string  `json:"region"`
+//     RegionName  string  `json:"regionName"`
+//     City        string  `json:"city"`
+//     Zip         string  `json:"zip"`
+//     Lat         float64 `json:"lat"`
+//     Lon         float64 `json:"lon"`
+//     Timezone    string  `json:"timezone"`
+//     ISP         string  `json:"isp"`
+//     Org         string  `json:"org"`
+//     AS          string  `json:"as"`
+//     Query       string  `json:"query"`
+// }
 
 // getIPDetails fetches IP information from ip-api.com
 // func getIPDetails(ip string) (*IPDetails, error) {
@@ -204,6 +204,28 @@ func getClientIP(r *http.Request) string {
 }
 
 // logIPHandler handles the IP logging endpoint
+// IPDetails struct to match the new API response format
+type IPDetails struct {
+    IP               string  `json:"ip"`
+    City             string  `json:"city"`
+    Region           string  `json:"region"`
+    RegionCode       string  `json:"region_code"`
+    Country          string  `json:"country"`
+    CountryName      string  `json:"country_name"`
+    ContinentCode    string  `json:"continent_code"`
+    InEU            bool    `json:"in_eu"`
+    Postal           string  `json:"postal"`
+    Latitude         float64 `json:"latitude"`
+    Longitude        float64 `json:"longitude"`
+    Timezone         string  `json:"timezone"`
+    UTCOffset        string  `json:"utc_offset"`
+    CallingCode      string  `json:"country_calling_code"`
+    Currency         string  `json:"currency"`
+    Languages        string  `json:"languages"`
+    ASN              string  `json:"asn"`
+    Organization     string  `json:"org"`
+}
+
 func logIPHandler(w http.ResponseWriter, r *http.Request) {
     ip := getClientIP(r)
     
@@ -215,17 +237,28 @@ func logIPHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
     
-    // Log the IP with details and timestamp
-    log.Printf("Client IP: %s, Location: %s, %s, ISP: %s, Time: %s",
+    // Enhanced logging with more details from the new API response
+    log.Printf("Access Log - Time: %s, IP: %s, Location: %s, %s, %s, Organization: %s, Coordinates: [%f, %f], Timezone: %s",
+        time.Now().Format(time.RFC3339),
         ip,
         details.City,
-        details.Country,
-        details.ISP,
-        time.Now().Format(time.RFC3339))
+        details.Region,
+        details.CountryName,
+        details.Organization,
+        details.Latitude,
+        details.Longitude,
+        details.Timezone)
+    
+    // Set response headers
+    w.Header().Set("Content-Type", "application/json")
+    w.Header().Set("X-Content-Type-Options", "nosniff")
     
     // Return the details to the client as JSON
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(details)
+    if err := json.NewEncoder(w).Encode(details); err != nil {
+        log.Printf("Error encoding response: %v", err)
+        http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+        return
+    }
 }
 
 func main() {
