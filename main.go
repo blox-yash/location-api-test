@@ -108,20 +108,60 @@ type IPDetails struct {
 }
 
 // getIPDetails fetches IP information from ip-api.com
-func getIPDetails(ip string) (*IPDetails, error) {
-    url := fmt.Sprintf("http://ip-api.com/json/%s", ip)
+// func getIPDetails(ip string) (*IPDetails, error) {
+//     url := fmt.Sprintf("http://ip-api.com/json/%s", ip)
     
-    resp, err := http.Get(url)
+//     resp, err := http.Get(url)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to fetch IP details: %v", err)
+//     }
+//     defer resp.Body.Close()
+
+//     body, err := io.ReadAll(resp.Body)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to read response: %v", err)
+//     }
+
+//     var details IPDetails
+//     if err := json.Unmarshal(body, &details); err != nil {
+//         return nil, fmt.Errorf("failed to parse response: %v", err)
+//     }
+
+//     return &details, nil
+// }
+func getIPDetails(ip string) (*IPDetails, error) {
+    // Create custom client
+    client := &http.Client{}
+    
+    // Create request with the HTTPS endpoint
+    url := fmt.Sprintf("https://ipapi.co/%s/json/", ip)
+    req, err := http.NewRequest("GET", url, nil)
+    if err != nil {
+        return nil, fmt.Errorf("failed to create request: %v", err)
+    }
+    
+    // Set required headers
+    req.Header.Set("User-Agent", "ipapi.co/#go-v1.5")
+    
+    // Make the request
+    resp, err := client.Do(req)
     if err != nil {
         return nil, fmt.Errorf("failed to fetch IP details: %v", err)
     }
     defer resp.Body.Close()
 
+    // Read response body
     body, err := io.ReadAll(resp.Body)
     if err != nil {
         return nil, fmt.Errorf("failed to read response: %v", err)
     }
 
+    // Check if response status is not OK
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+    }
+
+    // Parse the response
     var details IPDetails
     if err := json.Unmarshal(body, &details); err != nil {
         return nil, fmt.Errorf("failed to parse response: %v", err)
@@ -129,7 +169,6 @@ func getIPDetails(ip string) (*IPDetails, error) {
 
     return &details, nil
 }
-
 // getClientIP extracts the real client IP from various headers
 func getClientIP(r *http.Request) string {
     headers := []string{
